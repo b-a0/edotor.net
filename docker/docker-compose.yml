@@ -1,0 +1,23 @@
+version: "3"
+name: "edotor"
+
+services:
+  edotor:
+    build:
+      context: "."
+      dockerfile: Dockerfile
+      args:
+        - VERSION=v1.6.0
+    image: edotor:1.6.0
+    environment:
+      - NETWORK_ACCESS=internal
+      - VIRTUAL_HOST=gv.sums01.hex.tno.nl
+      - VIRTUAL_PORT=3000
+    restart: always
+    networks:
+      - revprox
+
+networks:
+  revprox:
+    name: revprox
+    external: true

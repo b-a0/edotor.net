@@ -1,0 +1,67 @@
+# Another template that uses a fixed Brewer color scheme:
+# https://www.graphviz.org/doc/info/colors.html#brewer 
+# Additionally it shows how to create a legend
+digraph N {
+	rankdir=LR;
+	splines=spline //none line polyline curved ortho spline compound
+	graph [fontname = "Arial", fontsize=16, style=rounded, colorscheme=set39, labelloc=b]; 
+	edge [fontname = "Arial", fontsize=12, style=solid, colorscheme=set39];
+  	node [fontname = "Arial", fontsize=12, style=filled, colorscheme=set39];
+	
+	label="Diagram title"
+
+	
+  	//style=invis
+  	// Type 1
+	node [shape=cylinder, fillcolor=1, style="filled"];
+		a1[label="item 1"];
+		a2[label="item 2"];
+
+	// Type 2
+	node [shape=rectangle, fillcolor=2, style="filled"];
+		b1[label="label\nnew line"]
+		b2[label="other label"]
+
+	// Type 3
+	node [shape=rectangle, fillcolor=3, style="rounded,filled"]
+		c1[label="Some text"];
+		c2[label="Long multiline\nlabel\nwith some text"];
+
+	// Type 4
+	node [shape=ellipse, fillcolor=4]
+		d1
+		d2
+	
+	subgraph cluster_legend {
+	  	style=invis
+	  	node [shape=cylinder, fillcolor=1, style="filled"];
+	  		l1[label="#Type 1#"]
+	  	node [shape=rectangle, fillcolor=2, style="filled"];
+	  		l2[label="#Type 2#"]
+	  	node [shape=rectangle, fillcolor=3, style="rounded,filled"]
+	  		l3[label="#Type 3#"]
+	  	node [shape=ellipse, fillcolor=4]
+	  		l4[label="#Type 4#"]
+		node [shape=ellipse, fillcolor=4, style=invis]
+	  		ll1
+	  		ll2
+	  		ll3
+	  		ll4
+	  	label="Legend"
+  	}
+
+	// Chart
+	{a1;a2} -> {b1;b2}
+	b1 -> c1
+	b2 -> c2
+	{c1:c2} -> {d1;d2}
+
+  	// Diagram legend
+  	// Align legend
+  	l1 -> l2 -> l3 -> l4[style=invis]
+  	// Arrow legend
+  	ll1 -> ll2[label="Option 1"]
+  	ll2 -> ll3[label="Option 1a", style=dashed]
+  	ll3 -> ll4[label="Option 2", style=dotted]
+
+}

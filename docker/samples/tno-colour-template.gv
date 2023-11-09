@@ -1,0 +1,34 @@
+# This example can serve as a template that adheres to the TNO colours and fonts
+digraph N {
+    rankdir=LR;
+    # Font choice is based on Powerpoint template 
+    graph [fontname = "Franklin Gothic Medium", fontsize=30, labelloc=b];
+    edge [fontname = "Franklin Gothic Book", fontsize=16, style=solid];
+    node [fontname = "Franklin Gothic Book", fontsize=16, shape="rectangle", style="filled, rounded"];
+    
+    # Label of the whole graph
+    label="TNO colour and font template"
+
+    blue [color="#68A0BF"]
+    orange [color="#F4811F"]        
+    red [color="#C72026"]
+    purple [color="#D81277"]
+    yellow [color="#FECB03"]
+    green [color="#90A83D"]
+    grey [color="#9F9CA2"]
+
+    # To create multiple nodes with the same colour place them under a "node" command
+    # and specify the desired color (or other style attributes)
+    node [color="#68A0BF" shape="circle"]
+        blue2 [label="More\n blue\n nodes"]
+        blue3 [label="More\n blue\n nodes"]
+        blue4 [label="More\n blue\n nodes"]
+ 
+    # Relations between nodes
+    grey -> orange [label="grey to orange"]
+    blue -> red
+    red -> { purple; green }
+    green -> {yellow; purple; grey}
+    purple -> {blue2; blue3; blue4}
+
+}
