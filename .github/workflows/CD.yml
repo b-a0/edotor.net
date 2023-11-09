@@ -1,0 +1,47 @@
+name: Node.js CD
+
+on:
+  push:
+    branches:
+    - "!*"
+    tags:
+    - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/setup-node@v1
+      with:
+        node-version: 18.x
+        cache: npm
+
+    - run: npm ci --legacy-peer-deps
+    - run: npm run build:prod
+
+    - uses: actions/upload-pages-artifact@v1
+      with:
+        path: ./dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy
+
+    permissions:
+      pages: write
+      id-token: write
+
+    needs: build
+    if: ${{ github.ref == 'refs/heads/master' }}
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
