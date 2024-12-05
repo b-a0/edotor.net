@@ -13,6 +13,7 @@ services:
       - NETWORK_ACCESS=internal
       - VIRTUAL_HOST=gv.sums01.hex.tno.nl
       - VIRTUAL_PORT=3000
+      - HTTPS_METHOD=nohttps
     restart: always
     networks:
       - revprox

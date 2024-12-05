@@ -103,7 +103,7 @@ class App extends React.Component<Props, State> {
 		return (
 			<div className="main-container">
 				<nav className="navbar navbar-expand-md navbar-dark bg-dark mb-0">
-					<a className="navbar-brand" href="//edotor.net"><SiteLogo /></a>
+					<a className="navbar-brand" href="//gv.sums01.hex.tno.nl/"><SiteLogo /></a>
 
 					<button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapse">
 						<span className="navbar-toggler-icon" />
