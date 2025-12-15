@@ -1,9 +1,12 @@
-import { isSupportedEngine } from "./viz";
-import { SupportedEngine } from "./rendering";
+import { fromUint8Array, toUint8Array } from "js-base64";
+import { deflate, inflate } from "pako";
+
+import type { SupportedEngine } from "./rendering.js";
+import { isSupportedEngine } from "./viz.js";
 
 export const assertNever = (_: never): never => {
 	throw new Error("This should never happen.");
-}
+};
 
 export function removeChildren(container: HTMLElement): void {
 	while (container.firstChild) {
@@ -26,17 +29,15 @@ export const copyToClipboard = (text: string): void => {
 	} finally {
 		document.body.removeChild(ta);
 	}
-}
+};
 
 /**
  * Returns the full address of the page. Without the hash.
  */
 export const getFullUrl = (): string => {
-	const fullUrl = !!document.location ? document.location.href : "";
+	const fullUrl = document.location ? document.location.href : "";
 	const hashIndex = fullUrl.indexOf("#");
-	return hashIndex < 0
-		? fullUrl
-		: fullUrl.substring(0, hashIndex);
+	return hashIndex < 0 ? fullUrl : fullUrl.substring(0, hashIndex);
 };
 
 /**
@@ -44,35 +45,44 @@ export const getFullUrl = (): string => {
  * @param sourceToShare The source to encode.
  */
 export const getShareUrl = (data: ShareData): string => {
-	return getFullUrl() + "?engine=" + encodeURIComponent(data.engine) + "#" + encodeURIComponent(data.source);
-}
+	return `${getFullUrl()}?engine=${encodeURIComponent(data.engine)}#deflate:${fromUint8Array(deflate(data.source, { level: 9 }))}`;
+};
 
 /**
  * Gets the source that is provided via window.location.hash, if any
  */
-export const getSourceFromUrl = (): Partial<ShareData> => {
+export const getSourceFromUrl = (url: URL): Partial<ShareData> => {
+	const passedEndinge = url.searchParams.get("engine");
+	const engine = isSupportedEngine(passedEndinge) ? passedEndinge : undefined;
 
-	const res: Partial<ShareData> = {
-		source: undefined,
-		engine: undefined,
-	};
-
-	const l = window.location;
-	if (l.search) {
-		const params = new URLSearchParams(l.search);
-		const engineToUse = params.get("engine");
-		res.engine = isSupportedEngine(engineToUse) ? engineToUse : undefined;
+	if (!url.hash || url.hash === "#") {
+		return {
+			source: undefined,
+			engine,
+		};
 	}
 
-	const hash = l.hash;
-	if (!hash || hash === "#")
-		return res;
+	let source: string | undefined = url.hash.substring(1);
+	if (source.startsWith("deflate:")) {
+		source = tryInflate(source.substring("deflate:".length));
+	} else {
+		source = source ? decodeURIComponent(source) : undefined;
+	}
 
-	const source = hash.substring(1);
-	res.source = source ? decodeURIComponent(source) : undefined;
-
-	return res;
+	return {
+		source,
+		engine,
+	};
 };
+
+function tryInflate(base64Content: string): string | undefined {
+	try {
+		return inflate(toUint8Array(base64Content), { to: "string" });
+	} catch (e) {
+		console.error(`Failed to decode the compressed deflate source: ${e}`);
+		return undefined;
+	}
+}
 
 export interface ShareData {
 	source: string;

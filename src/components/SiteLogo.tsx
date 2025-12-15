@@ -1,8 +1,8 @@
-import * as React from "react";
-
-export function SiteLogo() {
+export default function SiteLogo() {
 	// E.||
 	return (
-		<span className="logo">E<span className="dot">dot</span>or</span>
+		<span style={{ color: "#fff" }}>
+			E<span style={{ color: "#808080" }}>dot</span>or
+		</span>
 	);
-};
+}

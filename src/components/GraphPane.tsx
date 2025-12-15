@@ -1,16 +1,24 @@
-import * as React from "react";
-import { Graph, Props as GraphProps } from "./Graph";
+import Graph, { type GraphProps } from "./Graph.js";
 
-import "./GraphPane.css";
-
-interface Props extends GraphProps {
+export interface GraphPaneProps extends GraphProps {
 	className?: string;
+	hasErrors: boolean;
 }
 
-export const GraphPane = (props: Props) => {
+export default function GraphPane(props: GraphPaneProps) {
 	return (
-		<div className={props.className}>
-			<Graph dotSrc={props.dotSrc} format={props.format} engine={props.engine} />
+		<div
+			style={{
+				width: "100%",
+				height: "100%",
+				opacity: props.hasErrors ? 0.5 : 1,
+			}}
+		>
+			<Graph
+				dotSrc={props.dotSrc}
+				format={props.format}
+				engine={props.engine}
+			/>
 		</div>
 	);
-};
+}

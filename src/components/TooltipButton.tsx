@@ -1,75 +1,72 @@
-import * as React from "react";
+import { Tooltip } from "bootstrap";
+import { useCallback, useEffect, useRef } from "react";
 
-interface Props {
-	onClick(): boolean;
+export type TooltipButtonProps = {
+	onClick: () => boolean;
 	title?: string;
-
 	className?: string;
-	children: any
-}
+	children?: React.ReactNode;
+};
 
-export class TooltipButton extends React.Component<Props, object> {
-	private buttonRef: React.RefObject<HTMLButtonElement> = React.createRef();
+export default function TooltipButton({
+	onClick,
+	title,
+	className,
+	children,
+}: TooltipButtonProps) {
+	const buttonRef = useRef<HTMLButtonElement>(null);
+	const tooltipRef = useRef<Tooltip | null>(null);
+	const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-	private timeout: ReturnType<typeof setTimeout> | undefined;
+	useEffect(() => {
+		const button = buttonRef.current;
+		if (!button) {
+			return;
+		}
 
-	private handleClick = () => {
-		const handler = this.props.onClick;
-		if (handler) {
-			const showTooltip = handler();
+		tooltipRef.current = new Tooltip(button, {
+			trigger: "manual",
+			title,
+		});
 
-			if (showTooltip) {
-				const domButton = this.buttonRef.current;
-
-				if (domButton) {
-					($(domButton) as any).tooltip("show");
-					this.removeTimeout();
-					setTimeout(() => ($(domButton) as any).tooltip("hide"), 2500);
-				}
+		return () => {
+			tooltipRef.current?.dispose();
+			if (timeoutRef.current) {
+				clearTimeout(timeoutRef.current);
 			}
+		};
+	}, [title]);
+
+	const handleClick = useCallback(() => {
+		const shouldShow = onClick?.();
+		if (!shouldShow) {
+			return;
 		}
-	}
 
-	private removeTimeout() {
-		const timeout = this.timeout;
-		if (timeout) {
-			clearTimeout(timeout);
-			this.timeout = undefined;
+		const tooltip = tooltipRef.current;
+		if (!tooltip) {
+			return;
 		}
-	}
 
-	public componentWillUnmount() {
-		this.removeTimeout();
-	}
+		tooltip.show();
 
-	public componentDidMount() {
-		this.updateTooltipTriggers();
-	}
-
-	public componentDidUpdate() {
-		this.updateTooltipTriggers();
-	}
-
-	private updateTooltipTriggers() {
-		const domButton = this.buttonRef.current;
-		if (domButton) {
-			($(domButton) as any).tooltip({ trigger: "click" });
+		if (timeoutRef.current) {
+			clearTimeout(timeoutRef.current);
 		}
-	}
 
-	public render() {
-		const p = this.props;
-		return (
-			<button
-				ref={this.buttonRef}
-				className={p.className ? "btn " + p.className : "btn"}
-				type="button"
-				data-toggle="tooltip"
-				title={p.title}
-				onClick={this.handleClick}
-			>
-				{p.children}
-			</button>
-		);
-	}
+		timeoutRef.current = setTimeout(() => {
+			tooltip.hide();
+		}, 2500);
+	}, [onClick]);
+
+	return (
+		<button
+			ref={buttonRef}
+			className={`btn ${className ?? ""}`}
+			type="button"
+			onClick={handleClick}
+		>
+			{children}
+		</button>
+	);
 }

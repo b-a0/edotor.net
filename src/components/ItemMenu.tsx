@@ -1,36 +1,36 @@
-import * as React from "react";
-
 export interface ItemMenuItem<T> {
 	value: T;
 	display: string;
 }
 
-interface Props<T> {
+export interface ItemMenuProps<T> {
 	items: readonly ItemMenuItem<T>[];
 	onClickItem(item: ItemMenuItem<T>["value"]): void;
 	label: string;
 }
-export function ItemMenu<TItem>(props: Props<TItem>) {
-
-	const options = props.items.map(item => (
-		<button
-			type="button"
-			className="dropdown-item"
-			key={item.display}
-			onClick={() => props.onClickItem(item.value)}
-		>
-			{item.display}
-		</button>
-	));
-
+export default function ItemMenu<TItem>(props: ItemMenuProps<TItem>) {
 	return (
 		<li className="nav-item dropdown">
-			<a className="nav-link dropdown-toggle" href="#" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+			<button
+				type="button"
+				className="nav-link dropdown-toggle"
+				data-bs-toggle="dropdown"
+				aria-haspopup="true"
+			>
 				{props.label}
-			</a>
+			</button>
 			<div className="dropdown-menu">
-				{options}
+				{props.items.map(item => (
+					<button
+						type="button"
+						className="dropdown-item"
+						key={item.display}
+						onClick={() => props.onClickItem(item.value)}
+					>
+						{item.display}
+					</button>
+				))}
 			</div>
 		</li>
 	);
-};
+}

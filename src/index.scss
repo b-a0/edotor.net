@@ -1,19 +1,6 @@
-@import "custom.scss";
-
-#spinner {
-	color: red;
-}
-
-.logo {
-	color: white;
-}
-.logo .dot {
-	color: gray;
-}
-
 .external-link::after {
 	content: "";
-	background: url("/arrow-up-right.svg") no-repeat;
+	background: url("./arrow-up-right.svg") no-repeat;
 	width: 16px;
 	height: 16px;
 	position: relative;

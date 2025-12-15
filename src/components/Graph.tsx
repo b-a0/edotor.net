@@ -1,105 +1,114 @@
-import * as React from "react";
-import * as svgPanZoom from "svg-pan-zoom";
-import { Rendering, SupportedFormat, SupportedEngine, renderElement } from "../rendering";
-import { removeChildren } from "../utils";
+import { Component, createRef } from "react";
+import svgPanZoom from "svg-pan-zoom";
+
+import {
+	type RenderResult,
+	renderElement,
+	type SupportedEngine,
+	type SupportedFormat,
+} from "../rendering.js";
+import { removeChildren } from "../utils.js";
 
 import "./Graph.css";
 
 // Thanks to mdaines for providing a react sample
-type State = ErrorState | RenderingState | EmptyState;
+type GraphState = ErrorState | RenderingState | EmptyState;
 
-interface ErrorState {
-	element: undefined;
+type ErrorState = {
+	element?: undefined;
 	error: string;
-}
-interface RenderingState {
-	element: Rendering;
-	error: undefined;
-}
-interface EmptyState {
-	element: undefined;
-	error: undefined;
-}
+};
+type RenderingState = {
+	element: RenderResult;
+	error?: undefined;
+};
+type EmptyState = {
+	element?: undefined;
+	error?: undefined;
+};
 
-const createEmptyState = (): EmptyState => ({ element: undefined, error: undefined });
-const createElementState = (element: Rendering): RenderingState => ({ element, error: undefined });
-const createErrorState = (error: string): ErrorState => ({ element: undefined, error });
+const emptyState = {
+	element: undefined,
+	error: undefined,
+} satisfies EmptyState;
 
-const isEmptyState = (s: State): s is EmptyState => s.element === undefined && s.error === undefined;
-
-function isRenderingState(s: State): s is RenderingState {
-	if (s.error !== undefined)
+function isRenderingState(s: GraphState): s is RenderingState {
+	if (s.error !== undefined) {
 		return false;
+	}
+
 	const e = s.element;
-	if (e === undefined)
+	if (e === undefined) {
 		return false;
+	}
 	// Dirty hack to catch erroneous XML/SVGs by Viz.js (Chrome and Firefox output behave differently)
-	return !e.innerHTML.includes("<parsererror") // Chrome
-		&& !e.innerHTML.includes("<sourcetext"); // Firefox
+	return (
+		!e.innerHTML.includes("<parsererror") && // Chrome
+		!e.innerHTML.includes("<sourcetext")
+	); // Firefox
 }
 
-const isErrorState = (s: State): s is ErrorState => s.element === undefined && s.error !== undefined;
-
-export interface Props {
+export type GraphProps = {
 	dotSrc: string;
 	format: SupportedFormat;
 	engine: SupportedEngine;
-}
+};
 
-export class Graph extends React.Component<Props, State> {
-	private containerRef: React.RefObject<HTMLDivElement> = React.createRef<HTMLDivElement>();
-	private panZoomContainer: SvgPanZoom.Instance | undefined;
+export default class Graph extends Component<GraphProps, GraphState> {
+	#containerRef = createRef<HTMLDivElement>();
+	#panZoomContainer: SvgPanZoom.Instance | undefined;
 
-	state: State = createEmptyState();
+	state: GraphState = emptyState;
 
-	private async updateGraph(): Promise<void> {
+	async #updateGraph(): Promise<void> {
 		const { dotSrc, format, engine } = this.props;
 
 		// If the input is empty (or only whitespace), render nothing.
 		if (!dotSrc.match(/\S+/)) {
-			this.setState(createEmptyState());
+			this.setState(emptyState);
 			return;
 		}
 
-		let element: Rendering;
+		let element: RenderResult;
 		try {
 			element = await renderElement(dotSrc, format, engine);
-		} catch (e) {
-			this.setState(createErrorState(e.message));
+			// biome-ignore lint/suspicious/noExplicitAny: todo
+		} catch (e: any) {
+			this.setState({ error: e.message });
 			return;
 		}
 		if (element) {
-			this.setState(createElementState(element));
+			this.setState({ element });
 		} else {
-			this.setState(createErrorState("Graph could not be rendered"));
+			this.setState({ error: "Graph could not be rendered" });
 		}
 	}
 
-	public componentDidMount() {
-		this.updateGraph();
+	componentDidMount() {
+		this.#updateGraph();
 	}
-	public componentWillUnmount() {
-		this.destroyCurrentZoomContainer();
-	}
-	private destroyCurrentZoomContainer() {
-		const container = this.panZoomContainer;
-		if (container)
-			container.destroy();
+	componentWillUnmount() {
+		this.#destroyCurrentZoomContainer();
 	}
 
-	public componentDidUpdate(prevProps: Props, prevState: State) {
+	#destroyCurrentZoomContainer() {
+		this.#panZoomContainer?.destroy();
+	}
+
+	componentDidUpdate(prevProps: GraphProps, prevState: GraphState) {
 		const { dotSrc, format, engine } = this.props;
 
-		if (dotSrc !== prevProps.dotSrc
-			|| format !== prevProps.format
-			|| engine !== prevProps.engine
+		if (
+			dotSrc !== prevProps.dotSrc ||
+			format !== prevProps.format ||
+			engine !== prevProps.engine
 		) {
-			this.updateGraph();
+			this.#updateGraph();
 		}
 
 		const state = this.state;
-		if (state.element !== prevState.element && this.containerRef.current) {
-			const container = this.containerRef.current;
+		if (state.element !== prevState.element && this.#containerRef.current) {
+			const container = this.#containerRef.current;
 			removeChildren(container);
 
 			if (isRenderingState(state)) {
@@ -109,21 +118,19 @@ export class Graph extends React.Component<Props, State> {
 				const zoomContainer = createZoomWrapper(state.element);
 				zoomContainer.zoom(0.8);
 
-				this.destroyCurrentZoomContainer();
-				this.panZoomContainer = zoomContainer;
+				this.#destroyCurrentZoomContainer();
+				this.#panZoomContainer = zoomContainer;
 			}
 		}
 	}
 
-	public render() {
-		return (
-			<div className={"graph"} ref={this.containerRef} />
-		);
+	render() {
+		return <div className="graph" ref={this.#containerRef} />;
 	}
 }
 
-const createZoomWrapper = (child: Rendering): SvgPanZoom.Instance => {
-	return svgPanZoom(child, {
+const createZoomWrapper = (child: RenderResult) =>
+	svgPanZoom(child, {
 		zoomEnabled: true,
 		controlIconsEnabled: false,
 		fit: true,
@@ -132,4 +139,3 @@ const createZoomWrapper = (child: Rendering): SvgPanZoom.Instance => {
 		maxZoom: 200,
 		zoomScaleSensitivity: 0.5,
 	});
-};

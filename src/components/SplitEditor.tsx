@@ -1,111 +1,123 @@
-import * as React from "react";
-import * as monacoGlobal from "monaco-editor";
+import type * as monaco from "monaco-editor";
+import { lazy, Suspense, useImperativeHandle, useRef, useState } from "react";
+import { ErrorBoundary } from "react-error-boundary";
+import { BarLoader } from "react-spinners";
 import SplitPane from "react-split-pane";
 
-import { EditorPane } from "./EditorPane";
-import { GraphPane } from "./GraphPane";
-import { SupportedFormat, SupportedEngine } from "../rendering";
-import { getSplitConfig, saveSplitConfig } from "../config";
+import { getSplitConfig, saveSplitConfig } from "../config.js";
+import type { SupportedEngine, SupportedFormat } from "../rendering.js";
 
-type ErrorList = monacoGlobal.editor.IMarkerData[];
+const EditorLazy = lazy(() => import("./Editor.js"));
+const GraphPaneLazy = lazy(() => import("./GraphPane.js"));
 
-interface Props {
+export type SplitEditorHandle = {
+	loadSource: (source: string) => void;
+};
+
+export type SplitEditorProps = {
 	initialSource: string;
 	format: SupportedFormat;
 	engine: SupportedEngine;
 	onSourceChange?(source: string): void;
-}
+	ref?: React.Ref<SplitEditorHandle>;
+};
 
-type State = SourceState | ErroredState;
-interface SourceState {
+type SplitEditorState = SourceState | ErroredState;
+type SourceState = {
 	dotSrc: string;
-	errors: undefined;
-	lastKnownGoodSrc: undefined;
-}
-interface ErroredState {
-	dotSrc: undefined;
-	errors: ErrorList;
+	errorCount?: undefined;
+	lastKnownGoodSrc?: undefined;
+};
+type ErroredState = {
+	dotSrc?: undefined;
+	errorCount: number;
 	lastKnownGoodSrc?: string;
-}
+};
 
-const createSourceState = (dotSrc: string): SourceState => ({ dotSrc, errors: undefined, lastKnownGoodSrc: undefined });
-const createErroredState = (errors: ErrorList, lastKnownGoodSrc?: string): ErroredState => ({ dotSrc: undefined, errors, lastKnownGoodSrc });
+const loadingStyle = {
+	position: "absolute",
+	display: "flex",
+	inset: "0",
+	justifyContent: "center",
+	alignItems: "center",
+} as const;
 
-export default class SplitEditor extends React.Component<Props, State> {
+export default function SplitEditor({
+	initialSource,
+	format,
+	engine,
+	// onSourceChange,
+	ref,
+}: SplitEditorProps) {
+	const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
-	private editorPaneRef: React.RefObject<EditorPane> = React.createRef();
+	const [initialValue] = useState(initialSource);
 
-	constructor(props: Props) {
-		super(props);
-		const p = this.props;
+	const [state, setState] = useState<SplitEditorState>({
+		dotSrc: initialSource,
+	});
 
-		this.state = createSourceState(p.initialSource);
-		if (p.onSourceChange)
-			p.onSourceChange(this.state.dotSrc);
-	}
+	useImperativeHandle(ref, () => ({
+		loadSource: (source: string) => {
+			editorRef.current?.setValue(source);
+			setState({ dotSrc: source });
+		},
+	}));
 
-	public loadDotSource(dotSrc: string) {
-		// Change the value of the underlying monaco instance
-		// Monaco will call onChange and
-		// the rest is going to be handled as if the user changed the value by hand
-		const editor = this.editorPaneRef.current;
-		if (editor) {
-			editor.loadValue(dotSrc);
-		}
-	}
+	const sourceToRender = state.dotSrc || state.lastKnownGoodSrc || "";
+	console.log({ sourceToRender, state });
 
-	dotSourceChanged = (dotSrc: string): void => {
-		const p = this.props;
-		if (p.onSourceChange)
-			p.onSourceChange(dotSrc);
+	return (
+		<SplitPane
+			split="vertical"
+			minSize={50}
+			defaultSize={getSplitConfig() || "50%"}
+			onChange={size => saveSplitConfig(size)}
+			// biome-ignore lint/suspicious/noExplicitAny: hack for: https://github.com/tomkp/react-split-pane/issues/830#issuecomment-2788356773
+			{...({} as any)}
+		>
+			<ErrorBoundary fallback="Could not load editor">
+				<Suspense
+					fallback={
+						<div style={loadingStyle}>
+							<BarLoader />
+						</div>
+					}
+				>
+					<EditorLazy
+						ref={editorRef}
+						initialValue={initialValue}
+						onChangeValue={(value, errors) => {
+							if (errors === 0) {
+								setState({ dotSrc: value });
+								return;
+							}
+							setState(prev => ({
+								errorCount: errors,
+								lastKnownGoodSrc: prev.dotSrc ?? prev.lastKnownGoodSrc,
+							}));
 
-		this.setState(createSourceState(dotSrc));
-	}
-
-	dotSourceErrored = (errors: ErrorList): void => {
-		this.setState(prevState => {
-			const lastKnownGoodSrc = prevState.dotSrc || prevState.lastKnownGoodSrc;
-			return createErroredState(errors, lastKnownGoodSrc);
-		});
-	}
-
-	private getDotSrcToRender() {
-		const s = this.state;
-
-		return !!s.dotSrc
-			? s.dotSrc
-			: (s.lastKnownGoodSrc ? s.lastKnownGoodSrc : "");
-	}
-
-	public render() {
-		const s = this.state;
-		const p = this.props;
-
-		const isErrored = s.errors && s.errors.length > 0;
-		const dotSrc = this.getDotSrcToRender();
-
-		const graphPaneClass = isErrored ? "errored" : "successful";
-
-		return (
-			<SplitPane
-				split="vertical"
-				minSize={50}
-				defaultSize={getSplitConfig() || "50%"}
-				onChange={size => saveSplitConfig(size)}
-			>
-				<EditorPane
-					ref={this.editorPaneRef}
-					defaultValue={s.dotSrc}
-					onChangeValue={this.dotSourceChanged}
-					onValueError={this.dotSourceErrored}
-				/>
-
-				<GraphPane className={"graph-container " + graphPaneClass}
-					dotSrc={dotSrc}
-					engine={p.engine}
-					format={p.format}
-				/>
-			</SplitPane>
-		);
-	}
+							// props.onSourceChange?.(src);
+						}}
+					/>
+				</Suspense>
+			</ErrorBoundary>
+			<ErrorBoundary fallback="Could not load graph preview">
+				<Suspense
+					fallback={
+						<div style={loadingStyle}>
+							<BarLoader />
+						</div>
+					}
+				>
+					<GraphPaneLazy
+						hasErrors={!!(state.errorCount && state.errorCount > 0)}
+						dotSrc={sourceToRender}
+						engine={engine}
+						format={format}
+					/>
+				</Suspense>
+			</ErrorBoundary>
+		</SplitPane>
+	);
 }

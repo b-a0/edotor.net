@@ -1,30 +1,58 @@
 import Viz from "viz.js";
-import workerURL from "viz.js/full.render.js";
-import { assertNever } from "./utils";
-import { FileSaver } from "./FileSaver";
-import { sourceFormatExtension } from "./viz";
+import workerURL from "viz.js/full.render.js?url";
+
+import type { FileSaver } from "./FileSaver.js";
+import { assertNever } from "./utils.js";
+import { sourceFormatExtension } from "./viz.js";
 
 const createViz = () => new Viz({ workerURL });
 
 let viz = createViz();
 
 export type SupportedFormat = "svg" | "png";
-export type SupportedEngine = "circo" | "dot" | "fdp" | "neato" | "osage" | "twopi";
-export type Rendering = SVGSVGElement | HTMLImageElement;
+export type SupportedEngine =
+	| "circo"
+	| "dot"
+	| "fdp"
+	| "neato"
+	| "osage"
+	| "twopi";
+export type RenderResult = SVGSVGElement | HTMLImageElement;
 
-export function renderElement(dotSrc: string, format: "svg", engine: SupportedEngine): Promise<SVGSVGElement>;
-export function renderElement(dotSrc: string, format: "png", engine: SupportedEngine): Promise<HTMLImageElement>;
-export function renderElement(dotSrc: string, format: SupportedFormat, engine: SupportedEngine): Promise<Rendering>;
-export function renderElement(dotSrc: string, format: SupportedFormat, engine: SupportedEngine): Promise<Rendering> {
+export function renderElement(
+	dotSrc: string,
+	format: "svg",
+	engine: SupportedEngine,
+): Promise<SVGSVGElement>;
+export function renderElement(
+	dotSrc: string,
+	format: "png",
+	engine: SupportedEngine,
+): Promise<HTMLImageElement>;
+export function renderElement(
+	dotSrc: string,
+	format: SupportedFormat,
+	engine: SupportedEngine,
+): Promise<RenderResult>;
+export function renderElement(
+	dotSrc: string,
+	format: SupportedFormat,
+	engine: SupportedEngine,
+): Promise<RenderResult> {
 	const renderOptions = {
 		engine,
 	};
 
 	switch (format) {
-		case "svg": return viz.renderSVGElement(dotSrc, renderOptions).catch(catcher);
-		case "png": return viz.renderImageElement(dotSrc, { ...renderOptions, mimeType: "image/png" }).catch(catcher);
+		case "svg":
+			return viz.renderSVGElement(dotSrc, renderOptions).catch(catcher);
+		case "png":
+			return viz
+				.renderImageElement(dotSrc, { ...renderOptions, mimeType: "image/png" })
+				.catch(catcher);
 		// TODO: JPG?
-		default: return assertNever(format);
+		default:
+			return assertNever(format);
 	}
 }
 
@@ -33,32 +61,42 @@ export function renderElement(dotSrc: string, format: SupportedFormat, engine: S
  * @param error
  */
 const catcher = (error: Error) => {
-	viz = createViz()
+	viz = createViz();
 	throw error;
 };
-
 
 export interface ExportOptions {
 	engine: SupportedEngine;
 }
 
-export async function exportAs(dotSrc: string, format: SupportedFormat, options: ExportOptions, saver: FileSaver, fileName: string = "graph"): Promise<void> {
-	const totalFileName = fileName + "." + format.toLowerCase();
+export async function exportAs(
+	dotSrc: string,
+	format: SupportedFormat,
+	options: ExportOptions,
+	saver: FileSaver,
+	fileName = "graph",
+): Promise<void> {
+	const totalFileName = `${fileName}.${format.toLowerCase()}`;
 
 	const element = await renderElement(dotSrc, format, options.engine);
 
 	if (isSVGElement(element)) {
-		const svgData = `<?xml version="1.0" encoding="UTF-8" ?>\n` + element.outerHTML;
+		const svgData = `<?xml version="1.0" encoding="UTF-8" ?>\n${element.outerHTML}`;
 		saver.save(svgData, totalFileName);
 		return;
 	}
 
-	const imageElement = await renderElement(dotSrc, format, options.engine);
+	const _imageElement = await renderElement(dotSrc, format, options.engine);
 	saver.saveImage(element, totalFileName);
 }
 
-export function saveSource(dotSrc: string, saver: FileSaver, fileName: string = "graph") {
-	saver.save(dotSrc, fileName + "." + sourceFormatExtension);
+export function saveSource(
+	dotSrc: string,
+	saver: FileSaver,
+	fileName = "graph",
+) {
+	saver.save(dotSrc, `${fileName}.${sourceFormatExtension}`);
 }
 
-const isSVGElement = (r: Rendering): r is SVGSVGElement => r instanceof SVGSVGElement;
+const isSVGElement = (r: RenderResult): r is SVGSVGElement =>
+	r instanceof SVGSVGElement;
