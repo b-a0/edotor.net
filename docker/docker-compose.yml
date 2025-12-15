@@ -6,12 +6,12 @@ services:
       context: "."
       dockerfile: Dockerfile
       args:
-        - VERSION=v1.6.0
-    image: edotor:1.6.0
+        - VERSION=v2.3.1
+    image: edotor:2.3.1
     environment:
       - NETWORK_ACCESS=internal
       - VIRTUAL_HOST=gv.sums01.hex.tno.nl
-      - VIRTUAL_PORT=3000
+      - VIRTUAL_PORT=5173
       - HTTPS_METHOD=nohttps
     restart: always
     networks:

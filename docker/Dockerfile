@@ -1,4 +1,4 @@
-FROM node:14-bullseye
+FROM node:25
 
 ARG VERSION
 
@@ -7,12 +7,9 @@ WORKDIR /edotor
 
 # Add the contents of the samples folder, overwriting what is in the repo
 ADD samples /edotor/src/samples
-# Overwrite the index.tsx file with the version that has the correct href in the header
-ADD index.tsx /edotor/src/
 
-RUN npm install
-RUN npm install -g serve
-RUN npm run build:prod
+RUN npm ci
+RUN npm run build
 
 # EXPOSE 3000
-CMD ["serve", "-s", "dist"]
+CMD ["npm", "run", "start"]
